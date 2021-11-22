@@ -1,22 +1,60 @@
-// <TODO: your plugin code here - you can base it on the code below, but you don't have to>
+// Examples of loops which are caught or not caught by the plugin transformer.
+// You can verify this behavior by commenting/uncommenting the iteration blocks.
 
-// Some internal library function
-async function getRandomNumber() {
-    return 4
+export async function setupPlugin({ global }) {
+    console.log('Setting up the plugin')
+    const range = [...new Array(5e5).keys()]
+    const object = Object.fromEntries(range.map(i => [i, i]))
+    global.range = range
+    global.object = object
 }
 
-// Plugin method that runs on plugin load
-export async function setupPlugin({ config }) {
-    console.log(`Setting up the plugin`)
-}
+export async function runEveryMinute({ global: { range, object } }) {
+    console.log('Run every minute called')
+    const start = new Date().valueOf()
 
-// Plugin method that processes event
-export async function processEvent(event, { config, cache }) {
-    const counterValue = (await cache.get('greeting_counter', 0))
-    cache.set('greeting_counter', counterValue + 1)
-    if (!event.properties) event.properties = {}
-    event.properties['greeting'] = config.greeting
-    event.properties['greeting_counter'] = counterValue
-    event.properties['random_number'] = await getRandomNumber()
-    return event
+    // The below loop fails
+    for (let i = 0; i < range.length; i++) {
+        const now = new Date().valueOf()
+        console.log({ i, elapsed: now - start, method: 'for-plusplus' })
+        try {
+            await fetch('http://localhost:8000/_health')
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // The below loop fails
+    let i = 0
+    while (i < range.length) {
+        const now = new Date().valueOf()
+        console.log({ i, elapsed: now - start, method: 'while' })
+        try {
+            await fetch('http://localhost:8000/_health')
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // The below loop does not fail
+    for (const i of range) {
+        const now = new Date().valueOf()
+        console.log({ i, elapsed: now - start, method: 'for-of' })
+        try {
+            await fetch('http://localhost:8000/_health')
+        } catch (e) {
+            console.error(e)
+        }
+    }
+
+    // The below loop does not fail
+    for (const property in object) {
+        const now = new Date().valueOf()
+        console.log({ property, elapsed: now - start, method: 'for-in' })
+        try {
+            await fetch('http://localhost:8000/_health')
+        } catch (e) {
+            console.error(e)
+        }
+    }
 }
